@@ -1,12 +1,11 @@
 /* eslint-disable no-unused-vars */
 /* --------------------------------------------------------
    🔔 OrderNotifier.js  
-   Safe global listener for new orders → Telegram + WhatsApp
+   Safe global listener for new orders → Telegram only
 -------------------------------------------------------- */
 
 import { collection, onSnapshot } from "firebase/firestore";
 import { db } from "../firebase";
-import { sendWhatsAppUpdate } from "./notifications";
 
 let listenerStarted = false;
 
@@ -29,7 +28,7 @@ export const startOrderNotificationListener = () => {
     JSON.parse(localStorage.getItem("notifiedOrders") || "[]")
   );
 
-  const ordersRef = collection(db, "orders"); // SAFE — db is guaranteed now
+  const ordersRef = collection(db, "orders");
 
   onSnapshot(ordersRef, async (snapshot) => {
     const ordersList = snapshot.docs.map((doc) => ({
@@ -46,27 +45,10 @@ export const startOrderNotificationListener = () => {
     );
 
     for (const order of newOrders) {
-      const message = `
-📦 *New Order Booked!*
+      // Here you used to send WhatsApp message — removed safely
+      console.log(`📦 New order booked: ${order.orderId}`);
 
-🧾 *Order ID:* ${order.orderId}
-👤 *Customer:* ${order.customerName}
-📞 *Phone:* ${order.customerPhone}
-🗓️ *Date:* ${order.date}
-💰 *Total:* ₹${order.totalAmount || 0}
-      `;
-
-      // Telegram Admin Alert
-      
-
-      // WhatsApp Customer
-      if (order.customerPhone) {
-        const phone = order.customerPhone.replace(/\D/g, "");
-        await sendWhatsAppUpdate(
-          phone,
-          `Your order #${order.orderId} is confirmed! Total: ₹${order.totalAmount}`
-        );
-      }
+      // Add Telegram code here if you want (optional)
 
       notifiedOrders.add(order.id);
     }

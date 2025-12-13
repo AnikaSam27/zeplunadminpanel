@@ -13,8 +13,11 @@ import AutoLogout from "./components/AutoLogout";
 import { signOut } from "firebase/auth";
 import { auth } from "./firebase";
 
+
 // ⭐ Import the global notification listener
 import { startOrderNotificationListener } from "./utils/OrderNotifier";
+
+console.log("Firebase Project ID:", process.env.REACT_APP_FIREBASE_PROJECT_ID);
 
 
 function App() {
