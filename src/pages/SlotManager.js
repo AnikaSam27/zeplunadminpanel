@@ -63,6 +63,7 @@ const SlotManager = () => {
               data.totalCapacity ?? CATEGORY_CAPACITY[category],
             category,
             label,
+            reservedUntil: null,
           });
         }
       }
@@ -138,6 +139,7 @@ const toggleSlot = async (dayLabel, category, slot) => {
   totalCapacity: CATEGORY_CAPACITY[category],
   active: true,
   available: true, // legacy, safe to keep
+  reservedUntil: null, // <-- initially empty
 });
 
       Swal.fire("Success", `Slot added for ${category} - ${label} at ${time}`, "success");

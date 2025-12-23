@@ -2,6 +2,8 @@
 import React, { useEffect, useState } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import Navbar from "./components/Navbar";
+import PartnerLeads from "./pages/PartnerLeads";
+import PartnerAnalytics from "./pages/PartnerAnalytics";
 import Dashboard from "./pages/Dashboard";
 import PendingPartners from "./pages/PendingPartners";
 import ApprovedPartners from "./pages/ApprovedPartners";
@@ -77,6 +79,10 @@ function App() {
                 <Route path="/slots" element={<SlotManager />} />
                 <Route path="/rate-card" element={<RateCardManager />} />
                 <Route path="/partner-earnings" element={<PartnerEarnings />} />
+                <Route path="/partner-leads" element={<PartnerLeads />} />
+                <Route path="/partner-analytics" element={<PartnerAnalytics />} />
+
+
               </>
             ) : (
               <Route path="*" element={<Navigate to="/login" replace />} />

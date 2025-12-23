@@ -38,8 +38,18 @@ const Navbar = () => {
         <Link to="/slots" onClick={() => setIsOpen(false)}>Slot Manager</Link>
         <Link to="/rate-card" onClick={() => setIsOpen(false)}>Rate Card</Link>
         <Link to="/partner-earnings">Partner Earnings</Link>
+        <Link to="/partner-leads" onClick={() => setIsOpen(false)}>
+  Partner Leads
+</Link>
+<Link to="/partner-analytics" onClick={() => setIsOpen(false)}>
+  📊 Partner Analytics
+</Link>
+
+
 
         <div className="sidebar-footer">
+          
+
           <button className="logout-btn" onClick={handleLogout}>
             Logout
           </button>
