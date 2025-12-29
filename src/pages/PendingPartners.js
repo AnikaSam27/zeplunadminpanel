@@ -12,22 +12,38 @@ const PendingPartner = () => {
   const [editPartner, setEditPartner] = useState(null); // track which partner is in edit mode
 
   const fetchPartners = async () => {
-    setLoading(true);
-    try {
-      const q = query(
-        collection(db, "partners"),
-        where("approved", "==", false),
-        where("kycSubmitted", "==", true),
-        where("kycVerified", "==", false)
-      );
-      const snapshot = await getDocs(q);
-      const partnerList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setPartners(partnerList);
-    } catch (error) {
-      console.error("Error fetching partners:", error);
-    }
-    setLoading(false);
-  };
+  setLoading(true);
+  try {
+    const snapshot = await getDocs(collection(db, "partners"));
+    const allPartners = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+
+    console.log("🔥 ALL PARTNERS:", allPartners);
+
+    const pendingPartners = allPartners.filter(p => {
+      console.log("CHECKING:", {
+        id: p.id,
+        approved: p.approved,
+        kycSubmitted: p.kycSubmitted,
+        kycVerified: p.kycVerified,
+        approvedType: typeof p.approved,
+        kycSubmittedType: typeof p.kycSubmitted,
+        kycVerifiedType: typeof p.kycVerified
+      });
+
+      return true; // show EVERYTHING for now
+    });
+
+    setPartners(pendingPartners);
+  } catch (error) {
+    console.error("Error fetching partners:", error);
+  }
+  setLoading(false);
+};
+
+
 
   useEffect(() => {
     fetchPartners();
