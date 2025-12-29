@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import React, { useEffect, useState } from "react";
 import {
   collection,
@@ -10,6 +11,8 @@ import {
 } from "firebase/firestore";
 import { db } from "../firebase";
 
+
+
 const statusColors = {
   new: "#6b7280",
   no_answer: "#f59e0b",
@@ -18,6 +21,14 @@ const statusColors = {
   approved: "#10b981",
   not_interested: "#ef4444"
 };
+
+const applicationStatusColors = {
+  pending: "#f59e0b",     // amber
+  contacted: "#3b82f6",   // blue
+  approved: "#10b981",    // green
+  rejected: "#ef4444"     // red
+};
+
 
 const statusLabels = {
   new: "New Lead",
@@ -34,11 +45,25 @@ const PartnerLeads = () => {
   const [search, setSearch] = useState("");
   const [form, setForm] = useState({ name: "", phone: "", category: "" });
   const [localRemarks, setLocalRemarks] = useState({});
+  const [websiteLeads, setWebsiteLeads] = useState([]);
+  const [showWebsiteLeads, setShowWebsiteLeads] = useState(true);
+  const [applications, setApplications] = useState([]);
+const [showApplications, setShowApplications] = useState(true);
+
+
+const fetchApplications = async () => {
+  const snap = await getDocs(collection(db, "partner_applications"));
+  const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  setApplications(data);
+};
+
 
   const fetchLeads = async () => {
     const snap = await getDocs(collection(db, "partner_leads"));
     const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     setLeads(data);
+
+
 
     // Initialize local remarks
     const remarksState = {};
@@ -48,9 +73,26 @@ const PartnerLeads = () => {
     setLocalRemarks(remarksState);
   };
 
+  const fetchWebsiteLeads = async () => {
+  const snap = await getDocs(collection(db, "website_partner_leads"));
+  const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  setWebsiteLeads(data);
+};
+
+
   useEffect(() => {
     fetchLeads();
+    fetchApplications();
   }, []);
+
+  const filteredWebsiteLeads = websiteLeads.filter(l => {
+  const matchesStatus = filter === "all" || l.status === filter;
+  const matchesSearch =
+    l.name?.toLowerCase().includes(search.toLowerCase()) ||
+    l.phone?.includes(search);
+  return matchesStatus && matchesSearch;
+});
+
 
   const updateLead = async (id, updates) => {
     await updateDoc(doc(db, "partner_leads", id), {
@@ -113,6 +155,13 @@ const PartnerLeads = () => {
     await deleteDoc(doc(db, "partner_leads", lead.id));
     fetchLeads();
   };
+
+  const deleteApplication = async (app) => {
+  if (!window.confirm(`Delete application from ${app.fullName}?`)) return;
+  await deleteDoc(doc(db, "partner_applications", app.id));
+  fetchApplications();
+};
+
 
   const handleRemarkChange = (leadId, field, value) => {
     setLocalRemarks(prev => ({
@@ -195,6 +244,128 @@ const PartnerLeads = () => {
           ))}
         </select>
       </div>
+
+      {/* ================= WEBSITE LEADS ================= */}
+<div
+  onClick={() => setShowApplications(prev => !prev)}
+  style={{
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    cursor: "pointer",
+    marginTop: "30px",
+    marginBottom: "10px"
+  }}
+>
+  <h3 style={{ margin: 0 }}>
+    🌐 Partner Applications ({applications.length})
+  </h3>
+  <span>{showApplications ? "⬇️" : "➡️"}</span>
+</div>
+
+
+
+{showApplications && (
+  <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: "40px" }}>
+    <thead style={{ background: "#1e293b", color: "#fff" }}>
+      <tr>
+        <th style={thStyle}>Name</th>
+        <th style={thStyle}>Phone</th>
+        <th style={thStyle}>Email</th>
+        <th style={thStyle}>Service</th>
+        <th style={thStyle}>City</th>
+        <th style={thStyle}>Experience</th>
+        <th style={thStyle}>Feedback</th>
+        <th style={thStyle}>Status</th>
+<th style={thStyle}>Actions</th>
+
+      </tr>
+    </thead>
+
+    <tbody>
+      {applications.map(a => (
+        <tr key={a.id}>
+          <td style={tdStyle}>{a.fullName}</td>
+          <td style={tdStyle}>
+            <a href={`tel:${a.phone}`} style={{ color: "#60a5fa" }}>
+              📞 {a.phone}
+            </a>
+          </td>
+          <td style={tdStyle}>{a.email}</td>
+          <td style={tdStyle}>{a.serviceType}</td>
+          <td style={tdStyle}>{a.city}</td>
+          <td style={tdStyle}>{a.experience}</td>
+
+          {/* FEEDBACK */}
+          <td style={tdStyle}>
+            <input
+              defaultValue={a.feedback || ""}
+              placeholder="Internal feedback"
+              style={tableInputStyle}
+              onBlur={async e => {
+                await updateDoc(
+                  doc(db, "partner_applications", a.id),
+                  {
+                    feedback: e.target.value,
+                    updatedAt: serverTimestamp()
+                  }
+                );
+                fetchApplications();
+              }}
+            />
+          </td>
+
+          {/* STATUS */}
+          <td style={tdStyle}>
+            <select
+              value={a.status || "pending"}
+              style={{
+  background: applicationStatusColors[a.status || "pending"],
+  color: "#fff",
+  borderRadius: "6px",
+  padding: "4px 6px",
+  border: "none"
+}}
+
+              
+              onChange={async e => {
+                await updateDoc(
+                  doc(db, "partner_applications", a.id),
+                  {
+                    status: e.target.value,
+                    updatedAt: serverTimestamp()
+                  }
+                );
+                fetchApplications();
+              }}
+            >
+              <option value="pending">Pending</option>
+              <option value="contacted">Contacted</option>
+              <option value="approved">Approved</option>
+              <option value="rejected">Rejected</option>
+            </select>
+          </td>
+          <td style={tdStyle}>
+  <button
+    onClick={() => deleteApplication(a)}
+    style={{
+      ...actionButton,
+      background: "#f87171",
+      padding: "4px 8px",
+      fontSize: "12px"
+    }}
+  >
+    Delete
+  </button>
+</td>
+
+        </tr>
+      ))}
+    </tbody>
+  </table>
+)}
+
+
 
       {/* TABLE */}
       <table style={{ width: "100%", borderCollapse: "collapse", marginTop: "10px" }}>

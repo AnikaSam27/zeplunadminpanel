@@ -16,3 +16,7 @@ yarn-error.log*
 
 # Cache
 .cache/
+
+admin-scripts/googleServiceAccount.json
+
+firebaseServiceAccount.json

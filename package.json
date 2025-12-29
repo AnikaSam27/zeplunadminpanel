@@ -11,6 +11,8 @@
     "axios": "^1.13.2",
     "emailjs-com": "^3.2.0",
     "firebase": "^12.6.0",
+    "firebase-admin": "^13.6.0",
+    "googleapis": "^169.0.0",
     "html2canvas": "^1.4.1",
     "jspdf": "^3.0.4",
     "react": "^19.2.1",

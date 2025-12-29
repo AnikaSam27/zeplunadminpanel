@@ -17,6 +17,14 @@ const Dashboard = () => {
   const ordersPerPage = 10;
   const [estimates, setEstimates] = useState([]);
 
+  const orderStatusColors = {
+  booked: "#f59e0b",
+  confirmed: "#3b82f6",
+  completed: "#10b981",
+  cancelled: "#ef4444"
+};
+
+
   
 // 🔥 Real-time Orders Listener (Instant Notifications + Persistent Tracking)
 useEffect(() => {
@@ -152,6 +160,33 @@ useEffect(() => {
   const currentOrders = filteredOrders.slice(indexOfFirstOrder, indexOfLastOrder);
   const totalPages = Math.ceil(filteredOrders.length / ordersPerPage);
 
+  const renderCustomerInfo = (order) => {
+  return (
+    <div>
+      <div style={{ fontWeight: "600" }}>
+        👤 {order.customerName || "--"}
+      </div>
+
+      {order.customerPhone && (
+        <div style={{ fontSize: "13px", color: "#2563eb" }}>
+          <a href={`tel:${order.customerPhone}`}>
+            📞 {order.customerPhone}
+          </a>
+        </div>
+      )}
+
+      {order.deliveryAddress && (
+        <div style={{ fontSize: "12px", color: "#475569", marginTop: "4px" }}>
+          📍 {order.deliveryAddress.line1},{" "}
+          {order.deliveryAddress.serviceArea},{" "}
+          {order.deliveryAddress.city}
+        </div>
+      )}
+    </div>
+  );
+};
+
+
   return (
     <div className="page-container">
       {/* ======================= LIVE ORDERS ======================= */}
@@ -180,10 +215,24 @@ useEffect(() => {
             liveOrders.map((order) => (
               <tr key={order.id}>
                 <td>{order.orderId}</td>
-                <td>{order.customerName}</td>
+                <td>{renderCustomerInfo(order)}</td>
+
                 <td>{order.items?.map((i) => i.name).join(", ")}</td>
                 <td>{order.date}</td>
-                <td>{order.status}</td>
+                <td>
+  <span
+    style={{
+      background: orderStatusColors[order.status] || "#64748b",
+      color: "#fff",
+      padding: "4px 8px",
+      borderRadius: "6px",
+      fontSize: "12px"
+    }}
+  >
+    {order.status}
+  </span>
+</td>
+
                 <td>
                   {editingPartnerId === order.id ? (
                     <select
@@ -272,8 +321,22 @@ useEffect(() => {
               currentOrders.map((order) => (
                 <tr key={order.id}>
                   <td>{order.orderId}</td>
-                  <td>{order.customerName}</td>
-                  <td>{order.status}</td>
+                  <td>{renderCustomerInfo(order)}</td>
+
+                  <td>
+  <span
+    style={{
+      background: orderStatusColors[order.status] || "#64748b",
+      color: "#fff",
+      padding: "4px 8px",
+      borderRadius: "6px",
+      fontSize: "12px"
+    }}
+  >
+    {order.status}
+  </span>
+</td>
+
                   <td>{order.handymanAssigned?.name || "--"}</td>
                   <td>₹{order.totalAmount?.toFixed(2) || 0}</td>
                 </tr>
