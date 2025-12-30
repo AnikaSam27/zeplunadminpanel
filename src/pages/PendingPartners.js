@@ -126,7 +126,14 @@ const PendingPartner = () => {
                   <td>{p.name}</td>
                   <td>{p.email}</td>
                   <td>{p.phone}</td>
-                  <td>{p.categories?.length ? p.categories.join(", ") : "No categories"}</td>
+                  <td>
+  {p.category
+    ? p.category
+    : Array.isArray(p.categories) && p.categories.length > 0
+      ? p.categories.join(", ")
+      : "Not selected"}
+</td>
+
                   <td>
                     <button 
                       onClick={() => approvePartner(p.id)} 
@@ -202,6 +209,15 @@ const PendingPartner = () => {
                             <p><b>Address:</b> <input type="text" value={p.address || ''} onChange={e => handleInputChange(p, 'address', e.target.value)} /></p>
                             <p><b>City:</b> <input type="text" value={p.city || ''} onChange={e => handleInputChange(p, 'city', e.target.value)} /></p>
                             <p><b>Area:</b> <input type="text" value={p.areas || ''} onChange={e => handleInputChange(p, 'areas', e.target.value)} /></p>
+                            <p>
+  <b>Service Category:</b>{" "}
+  {p.category
+    ? p.category
+    : Array.isArray(p.categories) && p.categories.length > 0
+      ? p.categories.join(", ")
+      : "Not selected"}
+</p>
+
                             <p><b>Aadhaar Number:</b> <input type="text" value={p.aadhaarNumber || ''} onChange={e => handleInputChange(p, 'aadhaarNumber', e.target.value)} /></p>
                             <p><b>PAN Number:</b> <input type="text" value={p.panNumber || ''} onChange={e => handleInputChange(p, 'panNumber', e.target.value)} /></p>
                             <p>
