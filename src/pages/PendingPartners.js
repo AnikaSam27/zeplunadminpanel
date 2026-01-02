@@ -15,33 +15,28 @@ const PendingPartner = () => {
   setLoading(true);
   try {
     const snapshot = await getDocs(collection(db, "partners"));
+
     const allPartners = snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
     }));
 
-    console.log("🔥 ALL PARTNERS:", allPartners);
-
     const pendingPartners = allPartners.filter(p => {
-      console.log("CHECKING:", {
-        id: p.id,
-        approved: p.approved,
-        kycSubmitted: p.kycSubmitted,
-        kycVerified: p.kycVerified,
-        approvedType: typeof p.approved,
-        kycSubmittedType: typeof p.kycSubmitted,
-        kycVerifiedType: typeof p.kycVerified
-      });
-
-      return true; // show EVERYTHING for now
+      return (
+        p.kycSubmitted === true &&
+        p.kycVerified !== true &&
+        p.approved !== true
+      );
     });
 
     setPartners(pendingPartners);
   } catch (error) {
     console.error("Error fetching partners:", error);
+  } finally {
+    setLoading(false);
   }
-  setLoading(false);
 };
+
 
 
 

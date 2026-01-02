@@ -41,6 +41,45 @@ const ApprovedPartners = () => {
   }
 };
 
+const toggleHold = async (partnerId, currentReason) => {
+  try {
+    if (currentReason && currentReason.trim() !== "") {
+      // REMOVE HOLD
+      await updateDoc(doc(db, "partners", partnerId), {
+        holdReason: ""
+      });
+
+      setPartners(prev =>
+        prev.map(p =>
+          p.id === partnerId ? { ...p, holdReason: "" } : p
+        )
+      );
+
+      alert("Partner reactivated");
+    } else {
+      // PUT ON HOLD
+      const reason = prompt("Enter reason for holding this partner:");
+      if (!reason) return;
+
+      await updateDoc(doc(db, "partners", partnerId), {
+        holdReason: reason
+      });
+
+      setPartners(prev =>
+        prev.map(p =>
+          p.id === partnerId ? { ...p, holdReason: reason } : p
+        )
+      );
+
+      alert("Partner put on hold");
+    }
+  } catch (err) {
+    console.error("Error updating hold reason:", err);
+    alert("Failed to update hold status");
+  }
+};
+
+
 
   return (
     <div className="page-container">
@@ -55,6 +94,7 @@ const ApprovedPartners = () => {
               <th>Email</th>
               <th>Phone</th>
               <th>Categories</th>
+              <th>Status</th>
               <th>Action</th>
             </tr>
           </thead>
@@ -64,22 +104,53 @@ const ApprovedPartners = () => {
                 <td>{p.name}</td>
                 <td>{p.email}</td>
                 <td>{p.phone}</td>
-                <td>{p.categories?.join(", ")}</td>
-                <td>
-        <button
-          onClick={() => moveBackToPending(p.id)}
-          style={{
-            background: "#ff9800",
-            color: "#000",
-            border: "none",
-            padding: "6px 10px",
-            borderRadius: "6px",
-            cursor: "pointer"
-          }}
-        >
-          Move to Pending
-        </button>
-      </td>
+                <td>{p.category
+    ? p.category
+    : Array.isArray(p.categories) && p.categories.length > 0
+      ? p.categories.join(", ")
+      : "Not selected"}
+</td>
+<td>
+  {p.holdReason && p.holdReason.trim() !== "" ? (
+    <span style={{ color: "red", fontWeight: "bold" }}>ON HOLD</span>
+  ) : (
+    <span style={{ color: "green" }}>ACTIVE</span>
+  )}
+</td>
+
+
+
+              <td>
+  <button
+    onClick={() => toggleHold(p.id, p.holdReason)}
+    style={{
+      background: p.holdReason ? "#2ecc71" : "#f39c12",
+      color: "#fff",
+      border: "none",
+      padding: "6px 10px",
+      borderRadius: "6px",
+      cursor: "pointer",
+      marginRight: "6px"
+    }}
+  >
+    {p.holdReason ? "Remove Hold" : "Put on Hold"}
+  </button>
+
+  <button
+    onClick={() => moveBackToPending(p.id)}
+    style={{
+      background: "#ff9800",
+      color: "#000",
+      border: "none",
+      padding: "6px 10px",
+      borderRadius: "6px",
+      cursor: "pointer"
+    }}
+  >
+    Move to Pending
+  </button>
+</td>
+  
               </tr>
             ))}
           </tbody>
