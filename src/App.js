@@ -1,3 +1,4 @@
+/* eslint-disable react/jsx-no-undef */
 /* eslint-disable no-unused-vars */
 import React, { useEffect, useState } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
@@ -14,6 +15,8 @@ import Login from "./pages/Login";
 import AutoLogout from "./components/AutoLogout";
 import { signOut } from "firebase/auth";
 import { auth } from "./firebase";
+import SendNotification from "./pages/SendNotifications";
+
 
 
 // ⭐ Import the global notification listener
@@ -81,6 +84,7 @@ function App() {
                 <Route path="/partner-earnings" element={<PartnerEarnings />} />
                 <Route path="/partner-leads" element={<PartnerLeads />} />
                 <Route path="/partner-analytics" element={<PartnerAnalytics />} />
+                <Route path="/send-notification" element={<SendNotification />} />
 
 
               </>

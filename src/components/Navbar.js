@@ -37,13 +37,11 @@ const Navbar = () => {
         <Link to="/approved-partners" onClick={() => setIsOpen(false)}>Approved Partners</Link>
         <Link to="/slots" onClick={() => setIsOpen(false)}>Slot Manager</Link>
         <Link to="/rate-card" onClick={() => setIsOpen(false)}>Rate Card</Link>
+         {/* 🔔 NEW: Send Notifications */}
+  <Link to="/send-notification" onClick={() => setIsOpen(false)}>🔔 Send Notifications</Link>
         <Link to="/partner-earnings">Partner Earnings</Link>
-        <Link to="/partner-leads" onClick={() => setIsOpen(false)}>
-  Partner Leads
-</Link>
-<Link to="/partner-analytics" onClick={() => setIsOpen(false)}>
-  📊 Partner Analytics
-</Link>
+        <Link to="/partner-leads" onClick={() => setIsOpen(false)}>Partner Leads</Link>
+<Link to="/partner-analytics" onClick={() => setIsOpen(false)}>📊 Partner Analytics</Link>
 
 
 
