@@ -9,13 +9,17 @@ const SendNotification = () => {
   const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState([]);
 
+  const BASE_URL = "https://customernotificationszeplun.onrender.com";
+
   const fetchHistory = async () => {
     try {
-      const res = await fetch("http://localhost:3000/notifications/history", {
+      const res = await fetch(`${BASE_URL}/notifications/history`, {
         headers: { "x-admin-key": "supersecret123" },
       });
       const data = await res.json();
-      if (data.success && data.notifications) setHistory(data.notifications);
+      if (data.success) {
+  setHistory(data.notifications || data.history || []);
+}
     } catch (err) {
       console.error("Failed to fetch notification history:", err);
     }
@@ -41,8 +45,8 @@ const SendNotification = () => {
     try {
       const url =
         sendType === "now"
-          ? "http://localhost:3000/notifications/send"
-          : "http://localhost:3000/notifications/schedule";
+          ? `${BASE_URL}/notifications/send`
+          : `${BASE_URL}/notifications/schedule`;
 
       const payload = {
         title: title.trim(),
