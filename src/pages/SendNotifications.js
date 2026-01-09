@@ -51,7 +51,10 @@ const SendNotification = () => {
       const payload = {
         title: title.trim(),
         body: body.trim(),
-        ...(sendType === "schedule" && { scheduledAt }),
+        ...(sendType === "schedule" && {
+  scheduledAt: new Date(scheduledAt).toISOString(),
+}),
+
       };
 
       const res = await fetch(url, {

@@ -47,17 +47,22 @@ const ApprovedPartners = () => {
   }
 };
 
-const toggleHold = async (partnerId, currentReason) => {
+const toggleHold = async (partnerId, isOnHold) => {
   try {
-    if (currentReason && currentReason.trim() !== "") {
+    const partnerRef = doc(db, "partners", partnerId);
+
+    if (isOnHold) {
       // REMOVE HOLD
-      await updateDoc(doc(db, "partners", partnerId), {
+      await updateDoc(partnerRef, {
+        onHold: false,
         holdReason: ""
       });
 
       setPartners(prev =>
         prev.map(p =>
-          p.id === partnerId ? { ...p, holdReason: "" } : p
+          p.id === partnerId
+            ? { ...p, onHold: false, holdReason: "" }
+            : p
         )
       );
 
@@ -67,23 +72,27 @@ const toggleHold = async (partnerId, currentReason) => {
       const reason = prompt("Enter reason for holding this partner:");
       if (!reason) return;
 
-      await updateDoc(doc(db, "partners", partnerId), {
+      await updateDoc(partnerRef, {
+        onHold: true,
         holdReason: reason
       });
 
       setPartners(prev =>
         prev.map(p =>
-          p.id === partnerId ? { ...p, holdReason: reason } : p
+          p.id === partnerId
+            ? { ...p, onHold: true, holdReason: reason }
+            : p
         )
       );
 
       alert("Partner put on hold");
     }
   } catch (err) {
-    console.error("Error updating hold reason:", err);
+    console.error("Error updating hold:", err);
     alert("Failed to update hold status");
   }
 };
+
 
 return (
   <div className="page-container">
@@ -121,11 +130,12 @@ return (
         </td>
 
         <td>
-          {p.holdReason && p.holdReason.trim() !== "" ? (
-            <span style={{ color: "red", fontWeight: "bold" }}>ON HOLD</span>
-          ) : (
-            <span style={{ color: "green", fontWeight: "bold" }}>ACTIVE</span>
-          )}
+          {p.onHold ? (
+  <span style={{ color: "red", fontWeight: "bold" }}>ON HOLD</span>
+) : (
+  <span style={{ color: "green", fontWeight: "bold" }}>ACTIVE</span>
+)}
+
         </td>
 
         <td>
@@ -149,7 +159,7 @@ return (
 
           {/* HOLD BUTTON */}
           <button
-            onClick={() => toggleHold(p.id, p.holdReason)}
+            onClick={() => toggleHold(p.id, p.onHold)}
             style={{
               background: p.holdReason ? "#2ecc71" : "#f39c12",
               color: "#fff",
