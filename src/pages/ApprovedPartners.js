@@ -93,6 +93,49 @@ const toggleHold = async (partnerId, isOnHold) => {
   }
 };
 
+const printPartner = (partnerId) => {
+  const content = document.getElementById(`print-partner-${partnerId}`);
+  if (!content) return;
+
+  const printWindow = window.open("", "", "width=800,height=600");
+
+  printWindow.document.write(`
+    <html>
+      <head>
+        <title>Partner Details</title>
+        <style>
+          body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+          }
+          h2 {
+            text-align: center;
+          }
+          p {
+            margin: 6px 0;
+          }
+          hr {
+            margin: 12px 0;
+          }
+          button {
+            display: none;
+          }
+        </style>
+      </head>
+      <body>
+        <h2>Partner Details</h2>
+        ${content.innerHTML}
+      </body>
+    </html>
+  `);
+
+  printWindow.document.close();
+  printWindow.focus();
+  printWindow.print();
+  printWindow.close();
+};
+
+
 
 return (
   <div className="page-container">
@@ -194,7 +237,33 @@ return (
       {expandedPartner === p.id && (
         <tr>
           <td colSpan="6" style={{ background: "#f9f9f9" }}>
-            <div style={{ padding: "12px" }}>
+            <div id={`print-partner-${p.id}`} style={{ padding: "12px" }}>
+              
+
+              <button
+  onClick={() => printPartner(p.id)}
+  style={{
+    background: "#2c3e50",
+    color: "#fff",
+    padding: "6px 12px",
+    borderRadius: "6px",
+    border: "none",
+    cursor: "pointer",
+    marginBottom: "10px"
+  }}
+>
+  🖨 Print Details
+</button>
+{/* BASIC INFO (VISIBLE + PRINTABLE) */}
+<h3 style={{ marginBottom: "8px" }}>Basic Details</h3>
+
+<p><strong>Name:</strong> {p.name}</p>
+<p><strong>Email:</strong> {p.email}</p>
+<p><strong>Phone:</strong> {p.phone}</p>
+<p><strong>Category:</strong> {p.category || "—"}</p>
+
+<hr />
+
               <p><strong>Address:</strong> {p.address || "—"}</p>
               <p><strong>City:</strong> {p.city || "—"}</p>
               <p><strong>Areas:</strong> {p.areas?.join(", ") || "—"}</p>
