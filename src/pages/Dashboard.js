@@ -4,6 +4,8 @@ import React, { useEffect, useState } from "react";
 import { collection, onSnapshot } from "firebase/firestore";
 import { db } from "../firebase";
 import Swal from "sweetalert2";
+import { query, where, getDocs, doc, updateDoc } from "firebase/firestore";
+
 
 
 
@@ -23,6 +25,27 @@ const Dashboard = () => {
   completed: "#10b981",
   cancelled: "#ef4444"
 };
+
+useEffect(() => {
+  const fetchPartners = async () => {
+    const q = query(
+      collection(db, "partners"),
+      where("approved", "==", true),
+      where("onHold", "==", false)
+    );
+
+    const snapshot = await getDocs(q);
+    const list = snapshot.docs.map(doc => ({
+      partnerId: doc.id,
+      ...doc.data()
+    }));
+
+    setPartners(list);
+  };
+
+  fetchPartners();
+}, []);
+
 
 
   
@@ -83,42 +106,50 @@ useEffect(() => {
 
  // ✅ Update partner (manual allotment)
   const handlePartnerChange = async (orderId, newPartnerId) => {
-    const newPartner = partners.find((p) => p.partnerId === newPartnerId);
-    if (!newPartner) return;
+  const newPartner = partners.find((p) => p.partnerId === newPartnerId);
+  if (!newPartner) return;
 
-    const updatedPartner = {
-      name: newPartner.name || "--",
-      contact: newPartner.contact || "--",
-      partnerId: newPartner.partnerId,
-    };
+  try {
+    const orderRef = doc(db, "orders", orderId);
 
-    try {
-      const orderRef = doc(db, "orders", orderId);
-      await updateDoc(orderRef, {
-        handymanAssigned: updatedPartner,
+    await updateDoc(orderRef, {
+      handymanAssigned: {
+        name: newPartner.name || "--",
+        contact: newPartner.phone || "--",
         partnerId: newPartner.partnerId,
-      });
-      setEditingPartnerId(null);
-      Swal.fire("Success", "Partner assigned successfully!", "success");
-    } catch (error) {
-      console.error("Error updating partner:", error);
-      Swal.fire("Error", "Failed to assign partner.", "error");
-    }
-  };
+      },
+      partnerId: newPartner.partnerId,
+      reassignedAt: new Date(), // 🔥 important for tracking
+    });
+
+    setEditingPartnerId(null);
+
+    Swal.fire("Success", "Partner reassigned successfully", "success");
+  } catch (error) {
+    console.error(error);
+    Swal.fire("Error", "Failed to reassign partner", "error");
+  }
+};
+
 
   // Confirm edit partner
-  const confirmEditPartner = (orderId) => {
-    Swal.fire({
-      title: "Assign Partner?",
-      text: "Do you want to assign or change a partner for this order?",
-      icon: "question",
-      showCancelButton: true,
-      confirmButtonText: "Yes",
-      cancelButtonText: "No",
-    }).then((result) => {
-      if (result.isConfirmed) setEditingPartnerId(orderId);
-    });
-  };
+  const confirmEditPartner = (orderId, status) => {
+  if (["completed", "cancelled", "in_progress"].includes(status)) {
+    Swal.fire("Not Allowed", "You cannot change partner for this order", "warning");
+    return;
+  }
+
+  Swal.fire({
+    title: "Change Partner?",
+    text: "Do you want to assign or change the partner for this order?",
+    icon: "question",
+    showCancelButton: true,
+    confirmButtonText: "Yes",
+    cancelButtonText: "No",
+  }).then((result) => {
+    if (result.isConfirmed) setEditingPartnerId(orderId);
+  });
+};
 
   // 🧠 Filter Live Orders (booked only)
   const liveOrders = orders.filter(
@@ -337,7 +368,35 @@ useEffect(() => {
   </span>
 </td>
 
-                  <td>{order.handymanAssigned?.name || "--"}</td>
+                  <td>
+  {editingPartnerId === order.id ? (
+    <select
+      value={order.handymanAssigned?.partnerId || ""}
+      onChange={(e) => handlePartnerChange(order.id, e.target.value)}
+    >
+      <option value="">Select Partner</option>
+      {partners.map((p) => (
+        <option key={p.partnerId} value={p.partnerId}>
+          {p.name} ({p.phone})
+        </option>
+      ))}
+    </select>
+  ) : (
+    <span
+      style={{
+        cursor: ["completed", "cancelled"].includes(order.status)
+          ? "not-allowed"
+          : "pointer",
+        color: "blue",
+        opacity: ["completed", "cancelled"].includes(order.status) ? 0.5 : 1
+      }}
+      onClick={() => confirmEditPartner(order.id, order.status)}
+    >
+      {order.handymanAssigned?.name || "--"}
+    </span>
+  )}
+</td>
+
                   <td>₹{order.totalAmount?.toFixed(2) || 0}</td>
                 </tr>
               ))
