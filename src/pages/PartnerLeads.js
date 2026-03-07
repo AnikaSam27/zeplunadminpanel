@@ -115,33 +115,13 @@ const fetchApplications = async () => {
       remarks: { first: "", second: "", final: "" },
       remarkDates: { first: null, second: null, final: null },
       blacklisted: false,
-      converted: false,
       createdAt: serverTimestamp()
     });
     setForm({ name: "", phone: "", category: "" });
     fetchLeads();
   };
 
-  const convertToPartner = async (lead) => {
-  if (lead.blacklisted) return alert("Blacklisted partner");
-  if (!window.confirm("Convert this lead to partner?")) return;
-
-  // ✅ Create partner
-  await addDoc(collection(db, "partners"), {
-    name: lead.name,
-    phone: lead.phone,
-    categories: [lead.category],
-    approved: true,
-    source: "lead_conversion",
-    createdAt: serverTimestamp()
-  });
-
-  // 🫥 Silently delete from partner_leads
-  await deleteDoc(doc(db, "partner_leads", lead.id));
-
-  // Refresh UI
-  fetchLeads();
-};
+  
 
 
   const blacklistPartner = async (lead) => {
@@ -425,14 +405,7 @@ const fetchApplications = async () => {
               </td>
 
               <td style={tdStyle}>
-  {!l.converted && !l.blacklisted && (
-    <button 
-      onClick={() => convertToPartner(l)} 
-      style={{ ...actionButton, padding: "4px 8px", fontSize: "12px", marginRight: "4px" }}
-    >
-      Convert
-    </button>
-  )}
+  
   {!l.blacklisted && (
     <button 
       onClick={() => blacklistPartner(l)} 
