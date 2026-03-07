@@ -35,6 +35,8 @@ const Navbar = () => {
         <Link to="/dashboard" onClick={() => setIsOpen(false)}>Dashboard</Link>
         <Link to="/pending-partners" onClick={() => setIsOpen(false)}>Pending Partners</Link>
         <Link to="/approved-partners" onClick={() => setIsOpen(false)}>Approved Partners</Link>
+        <Link to="/product-orders">Product Orders</Link>
+        <Link to="/services">Services</Link>
         <Link to="/slots" onClick={() => setIsOpen(false)}>Slot Manager</Link>
         <Link to="/rate-card" onClick={() => setIsOpen(false)}>Rate Card</Link>
          {/* 🔔 NEW: Send Notifications */}

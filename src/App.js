@@ -11,6 +11,8 @@ import ApprovedPartners from "./pages/ApprovedPartners";
 import SlotManager from "./pages/SlotManager";
 import RateCardManager from "./pages/RateCardManager";
 import PartnerEarnings from "./pages/PartnerEarnings";
+import ProductOrders from "./pages/ProductOrders";
+import ServiceManager from "./pages/ServicesManager";
 import Login from "./pages/Login";
 import AutoLogout from "./components/AutoLogout";
 import { signOut } from "firebase/auth";
@@ -85,6 +87,8 @@ function App() {
                 <Route path="/partner-leads" element={<PartnerLeads />} />
                 <Route path="/partner-analytics" element={<PartnerAnalytics />} />
                 <Route path="/send-notification" element={<SendNotification />} />
+                <Route path="/product-orders" element={<ProductOrders />} />
+                <Route path="/services" element={<ServiceManager />} />
 
 
               </>
