@@ -20,3 +20,4 @@ yarn-error.log*
 admin-scripts/googleServiceAccount.json
 
 firebaseServiceAccount.json
+cloneBhopal.js

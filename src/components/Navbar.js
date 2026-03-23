@@ -43,7 +43,7 @@ const Navbar = () => {
   <Link to="/send-notification" onClick={() => setIsOpen(false)}>🔔 Send Notifications</Link>
         <Link to="/partner-earnings">Partner Earnings</Link>
         <Link to="/partner-leads" onClick={() => setIsOpen(false)}>Partner Leads</Link>
-<Link to="/partner-analytics" onClick={() => setIsOpen(false)}>📊 Partner Analytics</Link>
+<Link to="/partner-analytics" onClick={() => setIsOpen(false)}>Customer Leads</Link>
 
 
 
