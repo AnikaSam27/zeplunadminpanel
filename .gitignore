@@ -21,3 +21,4 @@ admin-scripts/googleServiceAccount.json
 
 firebaseServiceAccount.json
 cloneBhopal.js
+migratePartner.js

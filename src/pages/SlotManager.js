@@ -1,365 +1,183 @@
-/* eslint-disable no-undef */
-/* eslint-disable no-unused-vars */
-/* eslint-disable react-hooks/exhaustive-deps */
 import React, { useEffect, useState } from "react";
-import {
-  collection,
-  onSnapshot,
-  updateDoc,
-  doc,
-  query,
-  setDoc,
-  getDocs
-} from "firebase/firestore";
+import { doc, onSnapshot, updateDoc, collection, getDocs } from "firebase/firestore";
 import { db } from "../firebase";
-import Swal from "sweetalert2";
 
-const categories = [
-  "Electrician",
-  "AC Services",
-  "Plumber",
-  "Carpenter",
-  "Gardener",
-  "Home Appliances",
-];
+const dayLabels = ["Today", "Tomorrow", "Day After"];
 
-const dayLabels = ["Today", "Tomorrow", "Day After Tomorrow"];
+export default function SlotManager() {
+  const [cities, setCities] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [selectedCity, setSelectedCity] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("");
 
-const CATEGORY_CAPACITY = {
-  Electrician: 4,
-  "AC Services": 2,
-  Plumber: 3,
-  Carpenter: 2,
-  Gardener: 1,
-  "Home Appliances": 2,
-};
-
-
-const SlotManager = () => {
   const [slots, setSlots] = useState({});
   const [loading, setLoading] = useState(true);
-  const [newSlot, setNewSlot] = useState({ category: "", label: "Today", time: "" });
 
-  const upgradeAllSlotsOnce = async () => {
-  try {
-    for (const label of dayLabels) {
-      for (const category of categories) {
-        const slotsRef = collection(
-          db,
-          "category_time_slots",
-          label,
-          category
-        );
-
-        const snapshot = await getDocs(slotsRef);
-
-        for (const docSnap of snapshot.docs) {
-          const data = docSnap.data();
-
-          await updateDoc(docSnap.ref, {
-            active: data.active ?? true,
-            bookedCount: data.bookedCount ?? 0,
-            totalCapacity:
-              data.totalCapacity ?? CATEGORY_CAPACITY[category],
-            category,
-            label,
-            reservedUntil: null,
-          });
-        }
-      }
-    }
-
-    Swal.fire("Success", "All slots upgraded successfully", "success");
-  } catch (err) {
-    console.error(err);
-    Swal.fire("Error", "Slot upgrade failed", "error");
-  }
-};
-
-
-  // Real-time listener for slots
+  // Fetch Cities
   useEffect(() => {
-    setLoading(true);
-
-    const unsubscribeFns = dayLabels.map((dayLabel) => {
-      const dayDocRef = doc(db, "category_time_slots", dayLabel);
-      return categories.map((category) => {
-        const categoryColRef = collection(dayDocRef, category);
-        return onSnapshot(categoryColRef, (snapshot) => {
-          setSlots((prev) => {
-            const updated = { ...prev };
-            if (!updated[dayLabel]) updated[dayLabel] = {};
-            updated[dayLabel][category] = snapshot.docs
-              .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
-              .sort((a, b) => a.time.localeCompare(b.time));
-            return updated;
-          });
-          setLoading(false);
-        });
-      });
-    }).flat();
-
-    return () => unsubscribeFns.forEach((fn) => fn && fn());
+    const fetchCities = async () => {
+      const snap = await getDocs(collection(db, "cities_services"));
+      const list = snap.docs.map((d) => d.id);
+      setCities(list);
+      if (list.length) setSelectedCity(list[0]);
+    };
+    fetchCities();
   }, []);
 
-  // Toggle slot availability
-  // Toggle slot availability (ADMIN OVERRIDE)
-const toggleSlot = async (dayLabel, category, slot) => {
-  try {
-    const slotRef = doc(db, "category_time_slots", dayLabel, category, slot.id);
+  // Fetch Categories
+  useEffect(() => {
+    if (!selectedCity) return;
 
-    await updateDoc(slotRef, {
-      active: !slot.active
+    const fetchCategories = async () => {
+      const snap = await getDocs(
+        collection(db, "cities_services", selectedCity, "Categories")
+      );
+      const list = snap.docs.map((d) => d.id);
+      setCategories(list);
+      if (list.length) setSelectedCategory(list[0]);
+    };
+
+    fetchCategories();
+  }, [selectedCity]);
+
+  // Fetch Slots
+  useEffect(() => {
+    if (!selectedCity || !selectedCategory) return;
+
+    setLoading(true);
+    const unsubscribes = [];
+
+    dayLabels.forEach((_, index) => {
+      const ref = doc(
+        db,
+        "cities_services",
+        selectedCity,
+        "Categories",
+        selectedCategory,
+        "slots",
+        `day${index}`
+      );
+
+      const unsub = onSnapshot(ref, (snap) => {
+        const data = snap.data() || {};
+
+        setSlots((prev) => ({
+          ...prev,
+          [`day${index}`]: data,
+        }));
+
+        setLoading(false);
+      });
+
+      unsubscribes.push(unsub);
     });
 
-  } catch (err) {
-    console.error("Error updating slot:", err);
-    Swal.fire("Error", "Failed to update slot", "error");
-  }
-};
+    return () => unsubscribes.forEach((u) => u());
+  }, [selectedCity, selectedCategory]);
 
-  
+  // Toggle Slot
+  const toggleSlot = async (dayIndex, time, value) => {
+    const ref = doc(
+      db,
+      "cities_services",
+      selectedCity,
+      "Categories",
+      selectedCategory,
+      "slots",
+      `day${dayIndex}`
+    );
 
-
-  // Add new slot
-  const addNewSlot = async () => {
-    const { category, label, time } = newSlot;
-    if (!category || !label || !time) {
-      Swal.fire("Error", "Please select category, day, and enter time", "error");
-      return;
-    }
-
-    try {
-      const slotDocRef = doc(db, "category_time_slots", label, category, time);
-      await setDoc(slotDocRef, {
-  time,
-  category,
-  label,
-  bookedCount: 0,
-  totalCapacity: CATEGORY_CAPACITY[category],
-  active: true,
-  available: true, // legacy, safe to keep
-  reservedUntil: null, // <-- initially empty
-});
-
-      Swal.fire("Success", `Slot added for ${category} - ${label} at ${time}`, "success");
-      setNewSlot({ category: "", label: "Today", time: "" });
-    } catch (err) {
-      console.error("Error adding slot:", err);
-      Swal.fire("Error", "Failed to add slot", "error");
-    }
+    await updateDoc(ref, {
+      [time]: !value,
+    });
   };
 
-  if (loading) return <p>Loading slots...</p>;
+  // Get all unique times
+  const allTimes = Array.from(
+    new Set(
+      Object.values(slots).flatMap((day) => Object.keys(day || {}))
+    )
+  ).sort((a, b) => a.localeCompare(b));
 
   return (
-    <div className="page-container">
-      <h2>Slot Manager (Category-wise, Real-time)</h2>
+    <div className="min-h-screen bg-slate-900 text-white p-6">
+      <div className="max-w-6xl mx-auto">
+        <h1 className="text-2xl font-bold mb-6">Slot Manager</h1>
 
-      <div style={{ marginBottom: "20px" }}>
-  <button
-    onClick={upgradeAllSlotsOnce}
-    style={{
-      background: "#27ae60",
-      color: "white",
-      padding: "10px 18px",
-      borderRadius: "8px",
-      border: "none",
-      cursor: "pointer",
-      fontWeight: "bold",
-    }}
-  >
-    🔄 One-Time Slot Upgrade
-  </button>
-
-  <p style={{ fontSize: "13px", color: "#777", marginTop: "6px" }}>
-    Run once to add capacity & booking fields to all existing slots
-  </p>
-</div>
-
-
-      {/* Add New Slot */}
-      <div style={{ marginBottom: "40px", border: "1px solid #ccc", padding: "16px", borderRadius: "8px" }}>
-        <h3>Add New Slot</h3>
-        <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", marginBottom: "12px" }}>
+        {/* Filters */}
+        <div className="flex gap-4 mb-6">
           <select
-            value={newSlot.category}
-            onChange={(e) => setNewSlot({ ...newSlot, category: e.target.value })}
+            value={selectedCity}
+            onChange={(e) => setSelectedCity(e.target.value)}
+            className="bg-slate-800 px-4 py-2 rounded border border-slate-600"
           >
-            <option value="">Select Category</option>
+            {cities.map((c) => (
+              <option key={c}>{c}</option>
+            ))}
+          </select>
+
+          <select
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
+            className="bg-slate-800 px-4 py-2 rounded border border-slate-600"
+          >
             {categories.map((c) => (
-              <option key={c} value={c}>{c}</option>
+              <option key={c}>{c}</option>
             ))}
           </select>
-
-          <select
-            value={newSlot.label}
-            onChange={(e) => setNewSlot({ ...newSlot, label: e.target.value })}
-          >
-            {dayLabels.map((d) => (
-              <option key={d} value={d}>{d}</option>
-            ))}
-          </select>
-
-          <input
-            type="text"
-            placeholder="Time (e.g., 9:00 AM)"
-            value={newSlot.time}
-            onChange={(e) => setNewSlot({ ...newSlot, time: e.target.value })}
-          />
-
-          <button
-            onClick={addNewSlot}
-            style={{ background: "#3498db", color: "white", padding: "6px 16px", borderRadius: "6px", border: "none", cursor: "pointer" }}
-          >
-            Add Slot
-          </button>
         </div>
-      </div>
 
-      {/* Slots Table */}
-{dayLabels.map((dayLabel) => (
-  <details key={dayLabel} open style={{ marginBottom: "40px" }}>
-    <summary
-      style={{ fontSize: "20px", fontWeight: "bold", cursor: "pointer" }}
-    >
-      {dayLabel}
-    </summary>
-
-    {categories.map((category) => (
-      <details
-        key={category}
-        style={{ marginTop: "12px", marginLeft: "20px" }}
-      >
-        <summary
-          style={{ fontSize: "16px", fontWeight: "600", cursor: "pointer" }}
-        >
-          {category} ({slots[dayLabel]?.[category]?.length || 0} slots)
-        </summary>
-
-        {slots[dayLabel]?.[category]?.length > 0 ? (
-          <div
-            style={{
-              maxHeight: "260px",
-              overflowY: "auto",
-              border: "1px solid #ccc",
-              borderRadius: "6px",
-              marginTop: "6px",
-            }}
-          >
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead
-                style={{
-                  position: "sticky",
-                  top: 0,
-                  backgroundColor: "#f8f8f8",
-                  zIndex: 1,
-                }}
-              >
+        {/* Table */}
+        {loading ? (
+          <p>Loading...</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full border border-slate-700">
+              <thead className="bg-slate-800">
                 <tr>
-                  <th style={{ padding: "8px", borderBottom: "1px solid #ddd" }}>
-                    Time
-                  </th>
-                  <th style={{ padding: "8px", borderBottom: "1px solid #ddd" }}>
-                    Availability
-                  </th>
-                  <th style={{ padding: "8px", borderBottom: "1px solid #ddd" }}>
-                    Capacity
-                  </th>
-                  <th style={{ padding: "8px", borderBottom: "1px solid #ddd" }}>
-                    Action
-                  </th>
+                  <th className="p-3 border border-slate-700 text-left">Time</th>
+                  {dayLabels.map((day, idx) => (
+                    <th key={idx} className="p-3 border border-slate-700">
+                      {day}
+                    </th>
+                  ))}
                 </tr>
               </thead>
 
               <tbody>
-                {slots[dayLabel][category].map((slot, index) => {
-                  const isAvailable =
-                    slot.active && slot.bookedCount < slot.totalCapacity;
+                {allTimes.map((time) => (
+                  <tr key={time} className="text-center">
+                    <td className="p-3 border border-slate-700 text-left">
+                      {time}
+                    </td>
 
-                  return (
-                    <tr
-                      key={slot.id}
-                      style={{
-                        backgroundColor:
-                          index % 2 === 0 ? "#ffffff" : "#f2f2f2",
-                      }}
-                    >
-                      {/* Time */}
-                      <td
-                        style={{
-                          padding: "8px",
-                          borderBottom: "1px solid #eee",
-                        }}
-                      >
-                        {slot.time}
-                      </td>
+                    {dayLabels.map((_, dayIndex) => {
+                      const value = slots[`day${dayIndex}`]?.[time] ?? false;
 
-                      {/* Availability */}
-                      <td
-                        style={{
-                          padding: "8px",
-                          borderBottom: "1px solid #eee",
-                          color: isAvailable ? "green" : "red",
-                          fontWeight: "600",
-                        }}
-                      >
-                        {isAvailable ? "Available" : "Full"}
-                      </td>
-
-                      {/* Capacity */}
-                      <td
-                        style={{
-                          padding: "8px",
-                          borderBottom: "1px solid #eee",
-                        }}
-                      >
-                        {slot.bookedCount} / {slot.totalCapacity}
-                      </td>
-
-                      {/* Admin Control */}
-                      <td
-                        style={{
-                          padding: "8px",
-                          borderBottom: "1px solid #eee",
-                        }}
-                      >
-                        <button
-                          onClick={() =>
-                            toggleSlot(dayLabel, category, slot)
-                          }
-                          style={{
-                            background: slot.active
-                              ? "#e67e22"
-                              : "#2ecc71",
-                            color: "white",
-                            border: "none",
-                            padding: "6px 12px",
-                            borderRadius: "6px",
-                            cursor: "pointer",
-                          }}
-                        >
-                          {slot.active ? "Disable" : "Enable"}
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
+                      return (
+                        <td key={dayIndex} className="p-2 border border-slate-700">
+                          <button
+                            onClick={() =>
+                              toggleSlot(dayIndex, time, value)
+                            }
+                            className={`px-3 py-1 rounded font-medium text-sm transition ${
+                              value
+                                ? "bg-green-600 hover:bg-green-700"
+                                : "bg-red-600 hover:bg-red-700"
+                            }`}
+                          >
+                            {value ? "Available" : "Blocked"}
+                          </button>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
-        ) : (
-          <p style={{ color: "#999", marginLeft: "10px" }}>
-            No slots found
-          </p>
         )}
-      </details>
-    ))}
-  </details>
-))}
-
+      </div>
     </div>
   );
-};
-
-export default SlotManager;
+}
