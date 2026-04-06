@@ -1,10 +1,8 @@
 // src/firebase.js
 import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
-import {setPersistence, browserSessionPersistence } from "firebase/auth";
-
+import { getAuth, setPersistence, browserSessionPersistence } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
-
+import { getStorage } from "firebase/storage"; // ✅ ADD THIS
 
 const firebaseConfig = {
   apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
@@ -16,7 +14,10 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
+
+// ✅ AUTH
 export const auth = getAuth(app);
+
 setPersistence(auth, browserSessionPersistence)
   .then(() => {
     console.log("Session persistence enabled → Will logout if tab/browser closed");
@@ -24,4 +25,9 @@ setPersistence(auth, browserSessionPersistence)
   .catch((error) => {
     console.error("Persistence error:", error);
   });
+
+// ✅ FIRESTORE
 export const db = getFirestore(app);
+
+// ✅ STORAGE (THIS FIXES YOUR ERROR)
+export const storage = getStorage(app);

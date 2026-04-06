@@ -1,16 +1,16 @@
 /* eslint-disable no-unused-vars */
-/* eslint-disable react-hooks/rules-of-hooks */
-/* eslint-disable no-undef */
 import React, { useEffect, useState } from "react";
 import { collection, getDocs, query, where, doc, updateDoc } from "firebase/firestore";
 import { db } from "../firebase";
-
-
-
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 
 const ApprovedPartners = () => {
   const [partners, setPartners] = useState([]);
   const [expandedPartner, setExpandedPartner] = useState(null);
+  const [cityFilter, setCityFilter] = useState("");
+  const [areaFilter, setAreaFilter] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
 
   useEffect(() => {
     const fetchPartners = async () => {
@@ -22,296 +22,220 @@ const ApprovedPartners = () => {
     fetchPartners();
   }, []);
 
+  // Filter partners
+  const filteredPartners = partners.filter((p) => {
+    return (
+      (!cityFilter || p.city?.toLowerCase() === cityFilter.toLowerCase()) &&
+      (!areaFilter || (p.areas || []).includes(areaFilter)) &&
+      (!categoryFilter || (p.category || "").toLowerCase() === categoryFilter.toLowerCase())
+    );
+  });
+
   const moveBackToPending = async (partnerId) => {
-  const confirm = window.confirm(
-    "Are you sure you want to move this partner back to Pending?"
-  );
-  if (!confirm) return;
+    const confirmMove = window.confirm(
+      "Are you sure you want to move this partner back to Pending?"
+    );
+    if (!confirmMove) return;
 
-  try {
-    const partnerRef = doc(db, "partners", partnerId);
-
-    await updateDoc(partnerRef, {
-      approved: false,
-      approvedAt: null,
-      status: "pending"
-    });
-
-    // Remove from UI instantly
-    setPartners(prev => prev.filter(p => p.id !== partnerId));
-
-    alert("Partner moved back to pending");
-  } catch (err) {
-    console.error("Error moving partner back:", err);
-    alert("Something went wrong");
-  }
-};
-
-const toggleHold = async (partnerId, isOnHold) => {
-  try {
-    const partnerRef = doc(db, "partners", partnerId);
-
-    if (isOnHold) {
-      // REMOVE HOLD
+    try {
+      const partnerRef = doc(db, "partners", partnerId);
       await updateDoc(partnerRef, {
-        onHold: false,
-        holdReason: ""
+        approved: false,
+        approvedAt: null,
+        status: "pending"
       });
-
-      setPartners(prev =>
-        prev.map(p =>
-          p.id === partnerId
-            ? { ...p, onHold: false, holdReason: "" }
-            : p
-        )
-      );
-
-      alert("Partner reactivated");
-    } else {
-      // PUT ON HOLD
-      const reason = prompt("Enter reason for holding this partner:");
-      if (!reason) return;
-
-      await updateDoc(partnerRef, {
-        onHold: true,
-        holdReason: reason
-      });
-
-      setPartners(prev =>
-        prev.map(p =>
-          p.id === partnerId
-            ? { ...p, onHold: true, holdReason: reason }
-            : p
-        )
-      );
-
-      alert("Partner put on hold");
+      setPartners(prev => prev.filter(p => p.id !== partnerId));
+      alert("Partner moved back to pending");
+    } catch (err) {
+      console.error(err);
+      alert("Something went wrong");
     }
-  } catch (err) {
-    console.error("Error updating hold:", err);
-    alert("Failed to update hold status");
-  }
-};
+  };
 
-const printPartner = (partnerId) => {
-  const content = document.getElementById(`print-partner-${partnerId}`);
-  if (!content) return;
+  const toggleHold = async (partnerId, isOnHold) => {
+    try {
+      const partnerRef = doc(db, "partners", partnerId);
+      if (isOnHold) {
+        await updateDoc(partnerRef, { onHold: false, holdReason: "" });
+        setPartners(prev =>
+          prev.map(p =>
+            p.id === partnerId ? { ...p, onHold: false, holdReason: "" } : p
+          )
+        );
+        alert("Partner reactivated");
+      } else {
+        const reason = prompt("Enter reason for holding this partner:");
+        if (!reason) return;
+        await updateDoc(partnerRef, { onHold: true, holdReason: reason });
+        setPartners(prev =>
+          prev.map(p =>
+            p.id === partnerId ? { ...p, onHold: true, holdReason: reason } : p
+          )
+        );
+        alert("Partner put on hold");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Failed to update hold status");
+    }
+  };
 
-  const printWindow = window.open("", "", "width=800,height=600");
+  // Generate PDF for partner details
+  const generatePDF = async (partner) => {
+    const content = document.getElementById(`partner-form-${partner.id}`);
+    if (!content) return;
 
-  printWindow.document.write(`
-    <html>
-      <head>
-        <title>Partner Details</title>
-        <style>
-          body {
-            font-family: Arial, sans-serif;
-            padding: 20px;
-          }
-          h2 {
-            text-align: center;
-          }
-          p {
-            margin: 6px 0;
-          }
-          hr {
-            margin: 12px 0;
-          }
-          button {
-            display: none;
-          }
-        </style>
-      </head>
-      <body>
-        <h2>Partner Details</h2>
-        ${content.innerHTML}
-      </body>
-    </html>
-  `);
+    try {
+      const pdf = new jsPDF();
+      const canvas = await html2canvas(content, { scale: 2 });
+      const imgData = canvas.toDataURL("image/png");
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`Partner_${partner.name}_${partner.id}.pdf`);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to generate PDF.");
+    }
+  };
 
-  printWindow.document.close();
-  printWindow.focus();
-  printWindow.print();
-  printWindow.close();
-};
+  // Unique options for filters
+  const uniqueCities = [...new Set(partners.map(p => p.city).filter(Boolean))];
+  const uniqueAreas = [...new Set(partners.flatMap(p => p.areas || []).filter(Boolean))];
+  const uniqueCategories = [...new Set(partners.map(p => p.category).filter(Boolean))];
 
+  return (
+    <div style={{ padding: 20, background: "#0f172a", minHeight: "100vh", color: "white" }}>
+      <h2>Approved Partners</h2>
 
+      {/* Filters */}
+      <div style={{ marginBottom: 20, display: "flex", gap: 20, flexWrap: "wrap" }}>
+        <div>
+          <label>Filter by City:</label>
+          <select value={cityFilter} onChange={e => setCityFilter(e.target.value)}>
+            <option value="">All Cities</option>
+            {uniqueCities.map(city => <option key={city} value={city}>{city}</option>)}
+          </select>
+        </div>
+        <div>
+          <label>Filter by Area:</label>
+          <select value={areaFilter} onChange={e => setAreaFilter(e.target.value)}>
+            <option value="">All Areas</option>
+            {uniqueAreas.map(area => <option key={area} value={area}>{area}</option>)}
+          </select>
+        </div>
+        <div>
+          <label>Filter by Category:</label>
+          <select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}>
+            <option value="">All Categories</option>
+            {uniqueCategories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+          </select>
+        </div>
+        <div style={{ alignSelf: "end" }}>
+          <b>Total Partners: {filteredPartners.length}</b>
+        </div>
+      </div>
 
-return (
-  <div className="page-container">
-    <h2>Approved Partners</h2>
-
-    {partners.length === 0 ? (
-      <p>No approved partners yet</p>
-    ) : (
-      <table>
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Email</th>
-            <th>Phone</th>
-            <th>Categories</th>
-            <th>Status</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-
-        <tbody>
-  {partners.map((p) => (
-    <React.Fragment key={p.id}>
-      {/* MAIN ROW */}
-      <tr>
-        <td>{p.name}</td>
-        <td>{p.email}</td>
-        <td>{p.phone}</td>
-        <td>
-          {p.category
-            ? p.category
-            : Array.isArray(p.areas)
-            ? p.areas.join(", ")
-            : "Not selected"}
-        </td>
-
-        <td>
-          {p.onHold ? (
-  <span style={{ color: "red", fontWeight: "bold" }}>ON HOLD</span>
-) : (
-  <span style={{ color: "green", fontWeight: "bold" }}>ACTIVE</span>
-)}
-
-        </td>
-
-        <td>
-          {/* VIEW DETAILS */}
-          <button
-            onClick={() =>
-              setExpandedPartner(expandedPartner === p.id ? null : p.id)
-            }
-            style={{
-              background: "#3498db",
-              color: "#fff",
-              border: "none",
-              padding: "6px 10px",
-              borderRadius: "6px",
-              cursor: "pointer",
-              marginRight: "6px",
-            }}
-          >
-            {expandedPartner === p.id ? "Hide Details" : "View Details"}
-          </button>
-
-          {/* HOLD BUTTON */}
-          <button
-            onClick={() => toggleHold(p.id, p.onHold)}
-            style={{
-              background: p.holdReason ? "#2ecc71" : "#f39c12",
-              color: "#fff",
-              border: "none",
-              padding: "6px 10px",
-              borderRadius: "6px",
-              cursor: "pointer",
-              marginRight: "6px",
-            }}
-          >
-            {p.holdReason ? "Remove Hold" : "Put on Hold"}
-          </button>
-
-          {/* MOVE BACK */}
-          <button
-            onClick={() => moveBackToPending(p.id)}
-            style={{
-              background: "#ff9800",
-              color: "#000",
-              border: "none",
-              padding: "6px 10px",
-              borderRadius: "6px",
-              cursor: "pointer",
-            }}
-          >
-            Move to Pending
-          </button>
-        </td>
-      </tr>
-
-      {/* EXPANDED DETAILS ROW */}
-      {expandedPartner === p.id && (
-        <tr>
-          <td colSpan="6" style={{ background: "#f9f9f9" }}>
-            <div id={`print-partner-${p.id}`} style={{ padding: "12px" }}>
-              
-
-              <button
-  onClick={() => printPartner(p.id)}
-  style={{
-    background: "#2c3e50",
-    color: "#fff",
-    padding: "6px 12px",
-    borderRadius: "6px",
-    border: "none",
-    cursor: "pointer",
-    marginBottom: "10px"
-  }}
->
-  🖨 Print Details
-</button>
-{/* BASIC INFO (VISIBLE + PRINTABLE) */}
-<h3 style={{ marginBottom: "8px" }}>Basic Details</h3>
-
-<p><strong>Name:</strong> {p.name}</p>
-<p><strong>Email:</strong> {p.email}</p>
-<p><strong>Phone:</strong> {p.phone}</p>
-<p><strong>Category:</strong> {p.category || "—"}</p>
-
-<hr />
-
-              <p><strong>Address:</strong> {p.address || "—"}</p>
-              <p><strong>City:</strong> {p.city || "—"}</p>
-              <p><strong>Areas:</strong> {p.areas?.join(", ") || "—"}</p>
-
-              <hr />
-
-              <p><strong>Aadhaar Number:</strong> {p.aadhaarNumber || "—"}</p>
-              <p><strong>PAN Number:</strong> {p.panNumber || "—"}</p>
-
-              <hr />
-
-              <p><strong>Bank Name:</strong> {p.bankName || "—"}</p>
-              <p><strong>Account Number:</strong> {p.accountNumber || "—"}</p>
-              <p><strong>IFSC Code:</strong> {p.ifscCode || "—"}</p>
-              <p><strong>UPI ID:</strong> {p.upiId || "—"}</p>
-
-              <hr />
-
-              <p><strong>KYC Submitted:</strong> {p.kycSubmitted ? "Yes" : "No"}</p>
-              <p><strong>KYC Verified:</strong> {p.kycVerified ? "Yes" : "No"}</p>
-              <p><strong>Driving License:</strong> {p.hasDrivingLicense ? "Yes" : "No"}</p>
-
-              <hr />
-
-              <p><strong>Referral Code:</strong> {p.referralCode || "—"}</p>
-              <p><strong>Referred By:</strong> {p.referredBy || "—"}</p>
-
-              {p.holdReason && (
-                <>
-                  <hr />
-                  <p style={{ color: "red" }}>
-                    <strong>Hold Reason:</strong> {p.holdReason}
-                  </p>
-                </>
-              )}
+      {/* Partner list */}
+      {filteredPartners.length === 0 ? (
+        <p>No approved partners found</p>
+      ) : (
+        filteredPartners.map(p => (
+          <div key={p.id} style={{ background: "#1e293b", padding: 15, borderRadius: 10, marginBottom: 20 }}>
+            {/* Header */}
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <div>
+                <b>{p.name}</b> | {p.phone} | {p.city} | {p.category}
+              </div>
+              <div>
+                <button
+                  onClick={() => setExpandedPartner(expandedPartner === p.id ? null : p.id)}
+                  style={{
+                    background: "#3498db",
+                    color: "#fff",
+                    border: "none",
+                    padding: "6px 10px",
+                    borderRadius: "6px",
+                    cursor: "pointer"
+                  }}
+                >
+                  {expandedPartner === p.id ? "Hide Details" : "View Details"}
+                </button>
+              </div>
             </div>
-          </td>
-        </tr>
+
+            {/* Expanded Partner Details */}
+            {expandedPartner === p.id && (
+              <div id={`partner-form-${p.id}`} style={{ marginTop: 12, padding: 15, background: "#fff", color: "#000", borderRadius: 10 }}>
+                {/* PDF Download */}
+                <div style={{ textAlign: "center", marginBottom: 10 }}>
+                  <button
+                    onClick={() => generatePDF(p)}
+                    style={{ padding: "6px 12px", borderRadius: 6, background: "#2c3e50", color: "#fff" }}
+                  >
+                    Download PDF
+                  </button>
+                </div>
+
+                {/* Partner Info */}
+                <h3>Partner Details</h3>
+                <p><strong>Name:</strong> {p.name}</p>
+                <p><strong>Email:</strong> {p.email}</p>
+                <p><strong>Phone:</strong> {p.phone}</p>
+                <p><strong>Category:</strong> {p.category || "—"}</p>
+                <p><strong>Address:</strong> {p.address || "—"}</p>
+                <p><strong>City:</strong> {p.city || "—"}</p>
+                <p><strong>Areas:</strong> {p.areas?.join(", ") || "—"}</p>
+                <p><strong>Aadhaar Number:</strong> {p.aadhaarNumber || "—"}</p>
+                <p><strong>PAN Number:</strong> {p.panNumber || "—"}</p>
+                <p><strong>Bank Name:</strong> {p.bankName || "—"}</p>
+                <p><strong>Account Number:</strong> {p.accountNumber || "—"}</p>
+                <p><strong>IFSC Code:</strong> {p.ifscCode || "—"}</p>
+                <p><strong>UPI ID:</strong> {p.upiId || "—"}</p>
+                <p><strong>KYC Submitted:</strong> {p.kycSubmitted ? "Yes" : "No"}</p>
+                <p><strong>KYC Verified:</strong> {p.kycVerified ? "Yes" : "No"}</p>
+                <p><strong>Driving License:</strong> {p.hasDrivingLicense ? "Yes" : "No"}</p>
+                <p><strong>Referral Code:</strong> {p.referralCode || "—"}</p>
+                <p><strong>Referred By:</strong> {p.referredBy || "—"}</p>
+                {p.holdReason && <p style={{ color: "red" }}><strong>Hold Reason:</strong> {p.holdReason}</p>}
+
+                {/* Action Buttons */}
+                <div style={{ marginTop: 10 }}>
+                  <button
+                    onClick={() => toggleHold(p.id, p.onHold)}
+                    style={{
+                      marginRight: 6,
+                      background: p.onHold ? "#2ecc71" : "#f39c12",
+                      color: "#fff",
+                      border: "none",
+                      padding: "6px 10px",
+                      borderRadius: 6,
+                      cursor: "pointer"
+                    }}
+                  >
+                    {p.onHold ? "Remove Hold" : "Put on Hold"}
+                  </button>
+                  <button
+                    onClick={() => moveBackToPending(p.id)}
+                    style={{
+                      background: "#ff9800",
+                      color: "#000",
+                      border: "none",
+                      padding: "6px 10px",
+                      borderRadius: 6,
+                      cursor: "pointer"
+                    }}
+                  >
+                    Move to Pending
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        ))
       )}
-    </React.Fragment>
-  ))}
-</tbody>
+    </div>
+  );
+};
 
-      </table>
-    )}
-  </div>
-);
-
-}
-  
 export default ApprovedPartners;
