@@ -44,6 +44,7 @@ const Navbar = () => {
         <Link to="/partner-earnings">Partner Earnings</Link>
         <Link to="/partner-leads" onClick={() => setIsOpen(false)}>Partner Leads</Link>
 <Link to="/partner-analytics" onClick={() => setIsOpen(false)}>Customer Leads</Link>
+ <li><Link to="/weekly-analysis">Weekly Analysis</Link></li>
 
 
 
